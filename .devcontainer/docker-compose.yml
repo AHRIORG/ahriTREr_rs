@@ -1,37 +1,65 @@
+name: ahri-tre-r-dev
+
 services:
   r:
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
+    init: true
     command: sleep infinity
+    depends_on:
+      tre-postgres:
+        condition: service_healthy
     env_file:
       - .env
     environment:
       AHRI_TRE_LAKE_CONTAINER_PATH: ${AHRI_TRE_LAKE_CONTAINER_PATH:-/workspaces/ahri-tre-r/.lake}
       TRE_LAKE_PATH: ${AHRI_TRE_LAKE_CONTAINER_PATH:-/workspaces/ahri-tre-r/.lake}
-      TRE_HOST: postgres
-      TRE_PORT: "5432"
-      TRE_USER: ${POSTGRES_USER:-tre_user}
-      TRE_PWD: ${POSTGRES_PASSWORD:-tre_password}
-      TRE_DBNAME: ${POSTGRES_DB:-tre}
+      TRE_HOST: tre-postgres
+      TRE_PORT: 5432
+      TRE_DBNAME: ${TRE_DBNAME:-tre}
+      TRE_USER: ${TRE_USER:-tre_user}
+      TRE_PWD: ${TRE_PWD:-tre_password}
     volumes:
       - ..:/workspaces/ahri-tre-r:cached
-    depends_on:
-      - postgres
+      - tre-lake:${AHRI_TRE_LAKE_CONTAINER_PATH:-/workspaces/ahri-tre-r/.lake}
+      - vscode-server:/home/vscode/.vscode-server
+    networks:
+      tre-net:
+        aliases:
+          - ahri-tre-r-dev
+    expose:
+      - "8080"
+    extra_hosts:
+      - host.docker.internal:host-gateway
 
-  postgres:
+  tre-postgres:
     image: postgres:18-bookworm
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-tre_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tre_password}
-      POSTGRES_DB: ${POSTGRES_DB:-tre}
+      POSTGRES_DB: ${POSTGRES_BOOTSTRAP_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERPASSWORD:-postgres}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER:-postgres}" -d "$${POSTGRES_DB:-postgres}"
+      interval: 5s
+      timeout: 5s
+      retries: 12
     ports:
-      - "5432:5432"
+      - "${PGHOSTPORT:-5432}:5432"
+    networks:
+      tre-net:
+        aliases:
+          - tre-postgres
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
 
 volumes:
+  tre-lake:
   postgres-data:
+  vscode-server:
+
+networks:
+  tre-net:
