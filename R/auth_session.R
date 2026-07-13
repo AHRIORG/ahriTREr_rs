@@ -142,10 +142,11 @@ daemon_version <- function(client, format = NULL, ..., .body = NULL, .protocol_v
   )
 }
 
-session_close <- function(client, name = NULL, all = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+session_close <- function(client, name = NULL, all = NULL, optional_name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "name" = name,
-    "all" = all
+    "all" = all,
+    "optional-name" = optional_name
   )
   tre_command_call(
     client = client,
@@ -176,11 +177,15 @@ session_list <- function(client, ..., .body = NULL, .protocol_version = TRE_PROT
   )
 }
 
-session_open <- function(client, name = NULL, profile = NULL, env_file = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+session_open <- function(client, name = NULL, profile = NULL, env_file = NULL, issuer = NULL, subject = NULL, expiry = NULL, session_name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "name" = name,
     "profile" = profile,
-    "env-file" = env_file
+    "env-file" = env_file,
+    "issuer" = issuer,
+    "subject" = subject,
+    "expiry" = expiry,
+    "session-name" = session_name
   )
   tre_command_call(
     client = client,
@@ -231,9 +236,10 @@ session_status <- function(client, name = NULL, ..., .body = NULL, .protocol_ver
   )
 }
 
-session_use <- function(client, name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+session_use <- function(client, name = NULL, session_name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "name" = name
+    "name" = name,
+    "session-name" = session_name
   )
   tre_command_call(
     client = client,

@@ -150,10 +150,12 @@ study_current <- function(client, study = NULL, format = NULL, ..., .body = NULL
   )
 }
 
-study_custodians_add <- function(client, study = NULL, delegate = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+study_custodians_add <- function(client, study = NULL, delegate = NULL, user = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
-    "delegate" = delegate
+    "delegate" = delegate,
+    "user" = user,
+    "format" = format
   )
   tre_command_call(
     client = client,
@@ -186,10 +188,12 @@ study_custodians_list <- function(client, study = NULL, format = NULL, ..., .bod
   )
 }
 
-study_custodians_remove <- function(client, study = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+study_custodians_remove <- function(client, study = NULL, format = NULL, delegate = NULL, user = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
-    "format" = format
+    "format" = format,
+    "delegate" = delegate,
+    "user" = user
   )
   tre_command_call(
     client = client,
@@ -204,10 +208,12 @@ study_custodians_remove <- function(client, study = NULL, format = NULL, ..., .b
   )
 }
 
-study_custodians_transfer <- function(client, study = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+study_custodians_transfer <- function(client, study = NULL, format = NULL, primary = NULL, user = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
-    "format" = format
+    "format" = format,
+    "primary" = primary,
+    "user" = user
   )
   tre_command_call(
     client = client,
@@ -284,10 +290,11 @@ study_duo_replace <- function(client, study = NULL, restrictions = NULL, format 
   )
 }
 
-study_get <- function(client, name = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+study_get <- function(client, name = NULL, format = NULL, study_name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "name" = name,
-    "format" = format
+    "format" = format,
+    "study-name" = study_name
   )
   tre_command_call(
     client = client,
@@ -339,10 +346,11 @@ study_search <- function(client, cursor = NULL, limit = NULL, width = NULL, form
   )
 }
 
-study_use <- function(client, name = NULL, study = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+study_use <- function(client, name = NULL, study = NULL, study_name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "name" = name,
-    "study" = study
+    "study" = study,
+    "study-name" = study_name
   )
   tre_command_call(
     client = client,

@@ -52,13 +52,57 @@ function Parse-ImportantInputFlags {
         return $parsed
     }
 
-    foreach ($match in [regex]::Matches($ImportantInputs, '--[a-zA-Z0-9-]+')) {
+    $flat = (To-AsciiText $ImportantInputs) -replace '\?', ' '
+
+    foreach ($match in [regex]::Matches($flat, '--[a-zA-Z0-9-]+')) {
         $flag = $match.Value.Substring(2)
         $name = Normalize-ParamName $flag
         if ($name) {
             $parsed.Add([pscustomobject]@{ Param = $name; Key = $flag })
         }
     }
+
+    foreach ($match in [regex]::Matches($flat, '(?<![a-zA-Z0-9\-])\-[a-zA-Z][a-zA-Z0-9-]+')) {
+        if ($match.Index -gt 0) {
+            $prev = $flat[$match.Index - 1]
+            if ($prev -match '[A-Za-z0-9]') {
+                continue
+            }
+        }
+        $flag = $match.Value.Substring(1)
+        $name = Normalize-ParamName $flag
+        if ($name) {
+            $parsed.Add([pscustomobject]@{ Param = $name; Key = $flag })
+        }
+    }
+
+    $stop = @('optional', 'repeated', 'none', 'or', 'and', 'with', 'without', 'run')
+    foreach ($segment in ($flat -split '[,;]')) {
+        $s = $segment.Trim()
+        if (-not $s) {
+            continue
+        }
+
+        $singleToken = $null
+        if ($s -match '^[A-Za-z][A-Za-z0-9-]*$') {
+            $singleToken = $matches[0].ToLowerInvariant()
+        } elseif ($s -match '^[A-Za-z][A-Za-z0-9-]*\s+name$') {
+            $singleToken = (($s -replace '\s+name$', '') + '_name').ToLowerInvariant()
+        } elseif ($s -match '^[A-Za-z][A-Za-z0-9-]*\s+id$') {
+            $singleToken = (($s -replace '\s+id$', '') + '_id').ToLowerInvariant()
+        }
+
+        if (-not $singleToken -or $stop -contains $singleToken) {
+            continue
+        }
+
+        $name = Normalize-ParamName $singleToken
+        if ($name) {
+            $key = $singleToken -replace '_', '-'
+            $parsed.Add([pscustomobject]@{ Param = $name; Key = $key })
+        }
+    }
+
     $parsed
 }
 

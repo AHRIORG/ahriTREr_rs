@@ -117,12 +117,13 @@ datastore_rotate <- function(client, super_user = NULL, super_password_env = NUL
   )
 }
 
-datastore_schema <- function(client, super_user = NULL, super_password_env = NULL, port = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+datastore_schema <- function(client, super_user = NULL, super_password_env = NULL, port = NULL, format = NULL, plan = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "super-user" = super_user,
     "super-password-env" = super_password_env,
     "port" = port,
-    "format" = format
+    "format" = format,
+    "plan" = plan
   )
   tre_command_call(
     client = client,
@@ -157,14 +158,15 @@ domain_add <- function(client, name = NULL, uri = NULL, description = NULL, form
   )
 }
 
-domain_delete <- function(client, name = NULL, reason = NULL, actor = NULL, dry_run = NULL, yes = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+domain_delete <- function(client, name = NULL, reason = NULL, actor = NULL, dry_run = NULL, yes = NULL, format = NULL, domain_name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "name" = name,
     "reason" = reason,
     "actor" = actor,
     "dry-run" = dry_run,
     "yes" = yes,
-    "format" = format
+    "format" = format,
+    "domain-name" = domain_name
   )
   tre_command_call(
     client = client,
@@ -179,10 +181,11 @@ domain_delete <- function(client, name = NULL, reason = NULL, actor = NULL, dry_
   )
 }
 
-domain_get <- function(client, name = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+domain_get <- function(client, name = NULL, format = NULL, domain_name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "name" = name,
-    "format" = format
+    "format" = format,
+    "domain-name" = domain_name
   )
   tre_command_call(
     client = client,
@@ -277,9 +280,11 @@ tag_set <- function(client, target = NULL, name = NULL, tag = NULL, clear = NULL
   )
 }
 
-variable_add <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+variable_add <- function(client, format = NULL, domain = NULL, name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "domain" = domain,
+    "name" = name
   )
   tre_command_call(
     client = client,
@@ -374,9 +379,11 @@ variable_search <- function(client, cursor = NULL, limit = NULL, width = NULL, f
   )
 }
 
-variable_update <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+variable_update <- function(client, format = NULL, domain = NULL, name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "domain" = domain,
+    "name" = name
   )
   tre_command_call(
     client = client,

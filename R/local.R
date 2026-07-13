@@ -1,8 +1,12 @@
 ﻿# Auto-generated command wrappers for Local Commands
 
-completion <- function(client, shell = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+completion <- function(client, shell = NULL, bash = NULL, elvish = NULL, fish = NULL, powershell = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "shell" = shell
+    "shell" = shell,
+    "bash" = bash,
+    "elvish" = elvish,
+    "fish" = fish,
+    "powershell" = powershell
   )
   tre_command_call(
     client = client,

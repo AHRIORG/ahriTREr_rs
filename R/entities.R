@@ -1,8 +1,10 @@
 ﻿# Auto-generated command wrappers for Entities, Relations, Transformations, Ingest
 
-entity_add <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_add <- function(client, format = NULL, domain = NULL, entity_name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "domain" = domain,
+    "entity-name" = entity_name
   )
   tre_command_call(
     client = client,
@@ -40,9 +42,11 @@ entity_delete <- function(client, domain = NULL, name = NULL, reason = NULL, act
   )
 }
 
-entity_get <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_get <- function(client, format = NULL, domain = NULL, entity_name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "domain" = domain,
+    "entity-name" = entity_name
   )
   tre_command_call(
     client = client,
@@ -57,9 +61,10 @@ entity_get <- function(client, format = NULL, ..., .body = NULL, .protocol_versi
   )
 }
 
-entity_instance_add <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_add <- function(client, format = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -74,11 +79,14 @@ entity_instance_add <- function(client, format = NULL, ..., .body = NULL, .proto
   )
 }
 
-entity_instance_asset_link_add <- function(client, study = NULL, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_asset_link_add <- function(client, study = NULL, width = NULL, format = NULL, instance_id = NULL, asset = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "width" = width,
-    "format" = format
+    "format" = format,
+    "instance-id" = instance_id,
+    "asset" = asset,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -93,11 +101,14 @@ entity_instance_asset_link_add <- function(client, study = NULL, width = NULL, f
   )
 }
 
-entity_instance_asset_link_list <- function(client, study = NULL, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_asset_link_list <- function(client, study = NULL, width = NULL, format = NULL, instance_id = NULL, asset = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "width" = width,
-    "format" = format
+    "format" = format,
+    "instance-id" = instance_id,
+    "asset" = asset,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -112,11 +123,15 @@ entity_instance_asset_link_list <- function(client, study = NULL, width = NULL, 
   )
 }
 
-entity_instance_dataset_link_add <- function(client, study = NULL, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_dataset_link_add <- function(client, study = NULL, width = NULL, format = NULL, instance_id = NULL, dataset = NULL, variable = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "width" = width,
-    "format" = format
+    "format" = format,
+    "instance-id" = instance_id,
+    "dataset" = dataset,
+    "variable" = variable,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -131,11 +146,15 @@ entity_instance_dataset_link_add <- function(client, study = NULL, width = NULL,
   )
 }
 
-entity_instance_dataset_link_get <- function(client, study = NULL, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_dataset_link_get <- function(client, study = NULL, width = NULL, format = NULL, instance_id = NULL, dataset = NULL, variable = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "width" = width,
-    "format" = format
+    "format" = format,
+    "instance-id" = instance_id,
+    "dataset" = dataset,
+    "variable" = variable,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -150,11 +169,15 @@ entity_instance_dataset_link_get <- function(client, study = NULL, width = NULL,
   )
 }
 
-entity_instance_dataset_link_list <- function(client, study = NULL, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_dataset_link_list <- function(client, study = NULL, width = NULL, format = NULL, instance_id = NULL, dataset = NULL, variable = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "width" = width,
-    "format" = format
+    "format" = format,
+    "instance-id" = instance_id,
+    "dataset" = dataset,
+    "variable" = variable,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -189,11 +212,14 @@ entity_instance_datasets <- function(client, study = NULL, instance_id = NULL, w
   )
 }
 
-entity_instance_ensure <- function(client, study = NULL, dry_run = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_ensure <- function(client, study = NULL, dry_run = NULL, format = NULL, domain = NULL, entity = NULL, dataset = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "dry-run" = dry_run,
-    "format" = format
+    "format" = format,
+    "domain" = domain,
+    "entity" = entity,
+    "dataset" = dataset
   )
   tre_command_call(
     client = client,
@@ -208,9 +234,10 @@ entity_instance_ensure <- function(client, study = NULL, dry_run = NULL, format 
   )
 }
 
-entity_instance_get <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_get <- function(client, format = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -225,9 +252,10 @@ entity_instance_get <- function(client, format = NULL, ..., .body = NULL, .proto
   )
 }
 
-entity_instance_list <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_list <- function(client, format = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -242,10 +270,13 @@ entity_instance_list <- function(client, format = NULL, ..., .body = NULL, .prot
   )
 }
 
-entity_instance_map_add <- function(client, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_map_add <- function(client, width = NULL, format = NULL, instance_id = NULL, external_id = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "width" = width,
-    "format" = format
+    "format" = format,
+    "instance-id" = instance_id,
+    "external-id" = external_id,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -260,10 +291,13 @@ entity_instance_map_add <- function(client, width = NULL, format = NULL, ..., .b
   )
 }
 
-entity_instance_map_get <- function(client, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_map_get <- function(client, width = NULL, format = NULL, instance_id = NULL, external_id = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "width" = width,
-    "format" = format
+    "format" = format,
+    "instance-id" = instance_id,
+    "external-id" = external_id,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -278,10 +312,13 @@ entity_instance_map_get <- function(client, width = NULL, format = NULL, ..., .b
   )
 }
 
-entity_instance_map_list <- function(client, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_instance_map_list <- function(client, width = NULL, format = NULL, instance_id = NULL, external_id = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "width" = width,
-    "format" = format
+    "format" = format,
+    "instance-id" = instance_id,
+    "external-id" = external_id,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -296,9 +333,11 @@ entity_instance_map_list <- function(client, width = NULL, format = NULL, ..., .
   )
 }
 
-entity_list <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_list <- function(client, format = NULL, domain = NULL, entity_name = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "domain" = domain,
+    "entity-name" = entity_name
   )
   tre_command_call(
     client = client,
@@ -313,9 +352,13 @@ entity_list <- function(client, format = NULL, ..., .body = NULL, .protocol_vers
   )
 }
 
-entity_relation_add <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_add <- function(client, format = NULL, domain = NULL, relation_name = NULL, subject = NULL, object = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "domain" = domain,
+    "relation-name" = relation_name,
+    "subject" = subject,
+    "object" = object
   )
   tre_command_call(
     client = client,
@@ -353,9 +396,13 @@ entity_relation_delete <- function(client, domain = NULL, name = NULL, reason = 
   )
 }
 
-entity_relation_get <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_get <- function(client, format = NULL, domain = NULL, relation_name = NULL, subject = NULL, object = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "domain" = domain,
+    "relation-name" = relation_name,
+    "subject" = subject,
+    "object" = object
   )
   tre_command_call(
     client = client,
@@ -370,9 +417,10 @@ entity_relation_get <- function(client, format = NULL, ..., .body = NULL, .proto
   )
 }
 
-entity_relation_instance_add <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_add <- function(client, format = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -387,11 +435,13 @@ entity_relation_instance_add <- function(client, format = NULL, ..., .body = NUL
   )
 }
 
-entity_relation_instance_asset_link_add <- function(client, study = NULL, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_asset_link_add <- function(client, study = NULL, width = NULL, format = NULL, asset = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "width" = width,
-    "format" = format
+    "format" = format,
+    "asset" = asset,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -406,11 +456,13 @@ entity_relation_instance_asset_link_add <- function(client, study = NULL, width 
   )
 }
 
-entity_relation_instance_asset_link_list <- function(client, study = NULL, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_asset_link_list <- function(client, study = NULL, width = NULL, format = NULL, asset = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "width" = width,
-    "format" = format
+    "format" = format,
+    "asset" = asset,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -425,11 +477,13 @@ entity_relation_instance_asset_link_list <- function(client, study = NULL, width
   )
 }
 
-entity_relation_instance_dataset_link_add <- function(client, study = NULL, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_dataset_link_add <- function(client, study = NULL, width = NULL, format = NULL, dataset = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "width" = width,
-    "format" = format
+    "format" = format,
+    "dataset" = dataset,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -444,11 +498,13 @@ entity_relation_instance_dataset_link_add <- function(client, study = NULL, widt
   )
 }
 
-entity_relation_instance_dataset_link_get <- function(client, study = NULL, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_dataset_link_get <- function(client, study = NULL, width = NULL, format = NULL, dataset = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "width" = width,
-    "format" = format
+    "format" = format,
+    "dataset" = dataset,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -463,11 +519,13 @@ entity_relation_instance_dataset_link_get <- function(client, study = NULL, widt
   )
 }
 
-entity_relation_instance_dataset_link_list <- function(client, study = NULL, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_dataset_link_list <- function(client, study = NULL, width = NULL, format = NULL, dataset = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "width" = width,
-    "format" = format
+    "format" = format,
+    "dataset" = dataset,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -482,11 +540,14 @@ entity_relation_instance_dataset_link_list <- function(client, study = NULL, wid
   )
 }
 
-entity_relation_instance_ensure <- function(client, study = NULL, dry_run = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_ensure <- function(client, study = NULL, dry_run = NULL, format = NULL, domain = NULL, relation = NULL, dataset = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "dry-run" = dry_run,
-    "format" = format
+    "format" = format,
+    "domain" = domain,
+    "relation" = relation,
+    "dataset" = dataset
   )
   tre_command_call(
     client = client,
@@ -501,9 +562,10 @@ entity_relation_instance_ensure <- function(client, study = NULL, dry_run = NULL
   )
 }
 
-entity_relation_instance_get <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_get <- function(client, format = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -518,9 +580,10 @@ entity_relation_instance_get <- function(client, format = NULL, ..., .body = NUL
   )
 }
 
-entity_relation_instance_list <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_list <- function(client, format = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -535,10 +598,12 @@ entity_relation_instance_list <- function(client, format = NULL, ..., .body = NU
   )
 }
 
-entity_relation_instance_map_add <- function(client, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_map_add <- function(client, width = NULL, format = NULL, external_id = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "width" = width,
-    "format" = format
+    "format" = format,
+    "external-id" = external_id,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -553,10 +618,12 @@ entity_relation_instance_map_add <- function(client, width = NULL, format = NULL
   )
 }
 
-entity_relation_instance_map_get <- function(client, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_map_get <- function(client, width = NULL, format = NULL, external_id = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "width" = width,
-    "format" = format
+    "format" = format,
+    "external-id" = external_id,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -571,10 +638,12 @@ entity_relation_instance_map_get <- function(client, width = NULL, format = NULL
   )
 }
 
-entity_relation_instance_map_list <- function(client, width = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_instance_map_list <- function(client, width = NULL, format = NULL, external_id = NULL, transformation_id = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "width" = width,
-    "format" = format
+    "format" = format,
+    "external-id" = external_id,
+    "transformation-id" = transformation_id
   )
   tre_command_call(
     client = client,
@@ -589,9 +658,13 @@ entity_relation_instance_map_list <- function(client, width = NULL, format = NUL
   )
 }
 
-entity_relation_list <- function(client, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+entity_relation_list <- function(client, format = NULL, domain = NULL, relation_name = NULL, subject = NULL, object = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "format" = format
+    "format" = format,
+    "domain" = domain,
+    "relation-name" = relation_name,
+    "subject" = subject,
+    "object" = object
   )
   tre_command_call(
     client = client,
@@ -646,14 +719,17 @@ entity_search <- function(client, cursor = NULL, limit = NULL, width = NULL, for
   )
 }
 
-ingest_datafile <- function(client, study = NULL, asset = NULL, path = NULL, uri = NULL, format = NULL, output_format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+ingest_datafile <- function(client, study = NULL, asset = NULL, path = NULL, uri = NULL, format = NULL, output_format = NULL, versioning = NULL, encryption = NULL, hash = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "asset" = asset,
     "path" = path,
     "uri" = uri,
     "format" = format,
-    "output-format" = output_format
+    "output-format" = output_format,
+    "versioning" = versioning,
+    "encryption" = encryption,
+    "hash" = hash
   )
   tre_command_call(
     client = client,
@@ -668,9 +744,12 @@ ingest_datafile <- function(client, study = NULL, asset = NULL, path = NULL, uri
   )
 }
 
-ingest_dataset_datafile <- function(client, study = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+ingest_dataset_datafile <- function(client, study = NULL, domain = NULL, dataset = NULL, description = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
-    "study" = study
+    "study" = study,
+    "domain" = domain,
+    "dataset" = dataset,
+    "description" = description
   )
   tre_command_call(
     client = client,
@@ -685,10 +764,15 @@ ingest_dataset_datafile <- function(client, study = NULL, ..., .body = NULL, .pr
   )
 }
 
-ingest_dataset_sql <- function(client, study = NULL, format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+ingest_dataset_sql <- function(client, study = NULL, format = NULL, domain = NULL, dataset = NULL, flavour = NULL, sql = NULL, description = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
-    "format" = format
+    "format" = format,
+    "domain" = domain,
+    "dataset" = dataset,
+    "flavour" = flavour,
+    "sql" = sql,
+    "description" = description
   )
   tre_command_call(
     client = client,
@@ -703,12 +787,15 @@ ingest_dataset_sql <- function(client, study = NULL, format = NULL, ..., .body =
   )
 }
 
-ingest_dataset_table <- function(client, study = NULL, path = NULL, uri = NULL, output_format = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
+ingest_dataset_table <- function(client, study = NULL, path = NULL, uri = NULL, output_format = NULL, domain = NULL, dataset = NULL, description = NULL, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {
   auto_fields <- list(
     "study" = study,
     "path" = path,
     "uri" = uri,
-    "output-format" = output_format
+    "output-format" = output_format,
+    "domain" = domain,
+    "dataset" = dataset,
+    "description" = description
   )
   tre_command_call(
     client = client,
