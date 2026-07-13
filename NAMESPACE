@@ -1,4 +1,4 @@
-useDynLib(ahritre, .registration = TRUE)
+useDynLib(ahritre, .registration = TRUE, .fixes = "C_")
 export(AhriTreClient)
 export(RuntimeConfig)
 export(arrow_ipc_to_table)

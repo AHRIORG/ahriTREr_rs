@@ -2,10 +2,52 @@
 #include <Rinternals.h>
 #include <R_ext/Rdynload.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <dlfcn.h>
+#endif
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+/*
+ * Keep dynamic loading logic behind a tiny portability shim so the bridge
+ * builds on both POSIX and Windows toolchains.
+ */
+#ifdef _WIN32
+typedef HMODULE tre_lib_handle;
+
+static tre_lib_handle tre_dlopen(const char *path) {
+    return LoadLibraryA(path);
+}
+
+static void tre_dlclose(tre_lib_handle handle) {
+    if (handle != NULL) {
+        FreeLibrary(handle);
+    }
+}
+
+static void *tre_dlsym(tre_lib_handle handle, const char *name) {
+    return (void *)GetProcAddress(handle, name);
+}
+#else
+typedef void *tre_lib_handle;
+
+static tre_lib_handle tre_dlopen(const char *path) {
+    return dlopen(path, RTLD_NOW | RTLD_LOCAL);
+}
+
+static void tre_dlclose(tre_lib_handle handle) {
+    if (handle != NULL) {
+        dlclose(handle);
+    }
+}
+
+static void *tre_dlsym(tre_lib_handle handle, const char *name) {
+    return dlsym(handle, name);
+}
+#endif
 
 typedef enum ahri_tre_status {
     AHRI_TRE_STATUS_OK = 0,
@@ -51,9 +93,9 @@ typedef struct ahri_tre_payload_descriptor {
 #define AHRI_TRE_RUNTIME_CONFIG_FLAGS_NEVER_START 1u
 
 static void ahri_tre_library_finalizer(SEXP external) {
-    void *handle = R_ExternalPtrAddr(external);
+    tre_lib_handle handle = (tre_lib_handle)R_ExternalPtrAddr(external);
     if (handle != NULL) {
-        dlclose(handle);
+        tre_dlclose(handle);
         R_ClearExternalPtr(external);
     }
 }
@@ -62,31 +104,39 @@ static void ahri_tre_client_finalizer(SEXP external) {
     void *client = R_ExternalPtrAddr(external);
     SEXP tag = R_ExternalPtrTag(external);
     if (client != NULL && TYPEOF(tag) == STRSXP && Rf_length(tag) == 1) {
+        /*
+         * External pointers only retain the runtime library path in their tag,
+         * so finalization re-opens the ABI library to resolve the free symbol.
+         */
         const char *path = CHAR(STRING_ELT(tag, 0));
-        void *handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+        tre_lib_handle handle = tre_dlopen(path);
         if (handle != NULL) {
             void (*client_free)(ahri_tre_client *) =
-                (void (*)(ahri_tre_client *))dlsym(handle, "ahri_tre_client_free");
+                (void (*)(ahri_tre_client *))tre_dlsym(handle, "ahri_tre_client_free");
             if (client_free != NULL) {
                 client_free((ahri_tre_client *)client);
             }
-            dlclose(handle);
+            tre_dlclose(handle);
         }
         R_ClearExternalPtr(external);
     }
 }
 
-static void *open_library(const char *path) {
-    void *handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+static tre_lib_handle open_library(const char *path) {
+    tre_lib_handle handle = tre_dlopen(path);
     if (handle == NULL) {
         Rf_error("failed to load AHRI TRE C ABI library");
     }
     return handle;
 }
 
-static void *symbol(void *handle, const char *name) {
-    void *ptr = dlsym(handle, name);
+static void *symbol(tre_lib_handle handle, const char *name) {
+    void *ptr = tre_dlsym(handle, name);
     if (ptr == NULL) {
+        /*
+         * Fail fast when an expected symbol is missing so the caller gets a
+         * deterministic error instead of undefined behavior later.
+         */
         Rf_error("AHRI TRE C ABI library is missing symbol '%s'", name);
     }
     return ptr;
@@ -129,8 +179,8 @@ static ahri_tre_runtime_config runtime_config(void *handle, SEXP endpoint, SEXP 
 
 SEXP ahri_tre_library_open(SEXP path) {
     const char *library_path = CHAR(STRING_ELT(path, 0));
-    void *handle = open_library(library_path);
-    SEXP external = PROTECT(R_MakeExternalPtr(handle, R_NilValue, R_NilValue));
+    tre_lib_handle handle = open_library(library_path);
+    SEXP external = PROTECT(R_MakeExternalPtr((void *)handle, R_NilValue, R_NilValue));
     R_RegisterCFinalizerEx(external, ahri_tre_library_finalizer, TRUE);
     UNPROTECT(1);
     return external;
@@ -139,25 +189,25 @@ SEXP ahri_tre_library_open(SEXP path) {
 SEXP ahri_tre_owned_string(SEXP path, SEXP symbol_name) {
     const char *library_path = CHAR(STRING_ELT(path, 0));
     const char *name = CHAR(STRING_ELT(symbol_name, 0));
-    void *handle = open_library(library_path);
+    tre_lib_handle handle = open_library(library_path);
     char *(*func)(void) = (char *(*)(void))symbol(handle, name);
     void (*string_free)(char *) = (void (*)(char *))symbol(handle, "ahri_tre_string_free");
     char *value = func();
     SEXP out = PROTECT(Rf_mkString(value == NULL ? "" : value));
     string_free(value);
-    dlclose(handle);
+    tre_dlclose(handle);
     UNPROTECT(1);
     return out;
 }
 
 SEXP ahri_tre_status_message_bridge(SEXP path, SEXP status) {
     const char *library_path = CHAR(STRING_ELT(path, 0));
-    void *handle = open_library(library_path);
+    tre_lib_handle handle = open_library(library_path);
     const char *(*func)(ahri_tre_status) =
         (const char *(*)(ahri_tre_status))symbol(handle, "ahri_tre_status_message");
     const char *message = func((ahri_tre_status)Rf_asInteger(status));
     SEXP out = PROTECT(Rf_mkString(message == NULL ? "" : message));
-    dlclose(handle);
+    tre_dlclose(handle);
     UNPROTECT(1);
     return out;
 }
@@ -165,12 +215,12 @@ SEXP ahri_tre_status_message_bridge(SEXP path, SEXP status) {
 SEXP ahri_tre_result_response_json_bridge(SEXP path, SEXP result_external) {
     const char *library_path = CHAR(STRING_ELT(path, 0));
     ahri_tre_result *result = (ahri_tre_result *)R_ExternalPtrAddr(result_external);
-    void *handle = open_library(library_path);
+    tre_lib_handle handle = open_library(library_path);
     const char *(*func)(const ahri_tre_result *) =
         (const char *(*)(const ahri_tre_result *))symbol(handle, "ahri_tre_result_response_json_borrowed");
     const char *json = func(result);
     SEXP out = PROTECT(Rf_mkString(json == NULL ? "" : json));
-    dlclose(handle);
+    tre_dlclose(handle);
     UNPROTECT(1);
     return out;
 }
@@ -179,11 +229,11 @@ SEXP ahri_tre_result_free_bridge(SEXP path, SEXP result_external) {
     const char *library_path = CHAR(STRING_ELT(path, 0));
     ahri_tre_result *result = (ahri_tre_result *)R_ExternalPtrAddr(result_external);
     if (result != NULL) {
-        void *handle = open_library(library_path);
+        tre_lib_handle handle = open_library(library_path);
         void (*func)(ahri_tre_result *) =
             (void (*)(ahri_tre_result *))symbol(handle, "ahri_tre_result_free");
         func(result);
-        dlclose(handle);
+        tre_dlclose(handle);
         R_ClearExternalPtr(result_external);
     }
     return R_NilValue;
@@ -192,7 +242,7 @@ SEXP ahri_tre_result_free_bridge(SEXP path, SEXP result_external) {
 SEXP ahri_tre_runtime_call_bridge(SEXP path, SEXP action, SEXP endpoint, SEXP binary, SEXP timeout, SEXP never_start) {
     const char *library_path = CHAR(STRING_ELT(path, 0));
     const char *action_name = CHAR(STRING_ELT(action, 0));
-    void *handle = open_library(library_path);
+    tre_lib_handle handle = open_library(library_path);
     ahri_tre_runtime_config config = runtime_config(handle, endpoint, binary, timeout, never_start);
     ahri_tre_result *result = NULL;
     ahri_tre_status (*func)(const ahri_tre_runtime_config *, ahri_tre_result **) = NULL;
@@ -205,17 +255,17 @@ SEXP ahri_tre_runtime_call_bridge(SEXP path, SEXP action, SEXP endpoint, SEXP bi
     } else if (strcmp(action_name, "stop") == 0) {
         func = (ahri_tre_status (*)(const ahri_tre_runtime_config *, ahri_tre_result **))symbol(handle, "ahri_tre_runtime_stop");
     } else {
-        dlclose(handle);
+        tre_dlclose(handle);
         Rf_error("unknown AHRI TRE runtime action");
     }
     ahri_tre_status status = func(&config, &result);
-    dlclose(handle);
+    tre_dlclose(handle);
     return make_status_result(status, "result", result);
 }
 
 SEXP ahri_tre_client_create_bridge(SEXP path, SEXP endpoint, SEXP binary, SEXP timeout, SEXP never_start) {
     const char *library_path = CHAR(STRING_ELT(path, 0));
-    void *handle = open_library(library_path);
+    tre_lib_handle handle = open_library(library_path);
     ahri_tre_client_config (*client_config_default)(void) =
         (ahri_tre_client_config (*)(void))symbol(handle, "ahri_tre_client_config_default");
     ahri_tre_status (*client_create)(const ahri_tre_client_config *, const ahri_tre_runtime_config *, ahri_tre_client **) =
@@ -224,7 +274,7 @@ SEXP ahri_tre_client_create_bridge(SEXP path, SEXP endpoint, SEXP binary, SEXP t
     ahri_tre_runtime_config config = runtime_config(handle, endpoint, binary, timeout, never_start);
     ahri_tre_client *client = NULL;
     ahri_tre_status status = client_create(&client_config, &config, &client);
-    dlclose(handle);
+    tre_dlclose(handle);
     SEXP out = PROTECT(make_status_result(status, "client", client));
     SEXP client_external = VECTOR_ELT(out, 1);
     R_SetExternalPtrTag(client_external, path);
@@ -237,11 +287,11 @@ SEXP ahri_tre_client_free_bridge(SEXP path, SEXP client_external) {
     const char *library_path = CHAR(STRING_ELT(path, 0));
     ahri_tre_client *client = (ahri_tre_client *)R_ExternalPtrAddr(client_external);
     if (client != NULL) {
-        void *handle = open_library(library_path);
+        tre_lib_handle handle = open_library(library_path);
         void (*func)(ahri_tre_client *) =
             (void (*)(ahri_tre_client *))symbol(handle, "ahri_tre_client_free");
         func(client);
-        dlclose(handle);
+        tre_dlclose(handle);
         R_ClearExternalPtr(client_external);
     }
     return R_NilValue;
@@ -252,30 +302,30 @@ SEXP ahri_tre_client_execute_protocol_json_bridge(SEXP path, SEXP client_externa
     ahri_tre_client *client = (ahri_tre_client *)R_ExternalPtrAddr(client_external);
     const uint8_t *data = RAW(request);
     size_t len = (size_t)Rf_length(request);
-    void *handle = open_library(library_path);
+    tre_lib_handle handle = open_library(library_path);
     ahri_tre_status (*func)(ahri_tre_client *, const uint8_t *, size_t, ahri_tre_result **) =
         (ahri_tre_status (*)(ahri_tre_client *, const uint8_t *, size_t, ahri_tre_result **))symbol(handle, "ahri_tre_client_execute_protocol_json");
     ahri_tre_result *result = NULL;
     ahri_tre_status status = func(client, data, len, &result);
-    dlclose(handle);
+    tre_dlclose(handle);
     return make_status_result(status, "result", result);
 }
 
 SEXP ahri_tre_result_payload_count_bridge(SEXP path, SEXP result_external) {
     const char *library_path = CHAR(STRING_ELT(path, 0));
     ahri_tre_result *result = (ahri_tre_result *)R_ExternalPtrAddr(result_external);
-    void *handle = open_library(library_path);
+    tre_lib_handle handle = open_library(library_path);
     size_t (*func)(const ahri_tre_result *) =
         (size_t (*)(const ahri_tre_result *))symbol(handle, "ahri_tre_result_payload_count");
     size_t count = func(result);
-    dlclose(handle);
+    tre_dlclose(handle);
     return Rf_ScalarInteger((int)count);
 }
 
 SEXP ahri_tre_result_payload_descriptor_bridge(SEXP path, SEXP result_external, SEXP index) {
     const char *library_path = CHAR(STRING_ELT(path, 0));
     ahri_tre_result *result = (ahri_tre_result *)R_ExternalPtrAddr(result_external);
-    void *handle = open_library(library_path);
+    tre_lib_handle handle = open_library(library_path);
     ahri_tre_status (*func)(const ahri_tre_result *, size_t, ahri_tre_payload_descriptor *) =
         (ahri_tre_status (*)(const ahri_tre_result *, size_t, ahri_tre_payload_descriptor *))symbol(handle, "ahri_tre_result_payload_descriptor");
     ahri_tre_payload_descriptor descriptor;
@@ -296,7 +346,7 @@ SEXP ahri_tre_result_payload_descriptor_bridge(SEXP path, SEXP result_external, 
     SET_VECTOR_ELT(out, 5, descriptor.suggested_name == NULL ? R_NilValue : Rf_mkString(descriptor.suggested_name));
     SET_VECTOR_ELT(out, 6, Rf_ScalarReal((double)descriptor.size_bytes));
     Rf_setAttrib(out, R_NamesSymbol, names);
-    dlclose(handle);
+    tre_dlclose(handle);
     UNPROTECT(2);
     return out;
 }
@@ -304,7 +354,7 @@ SEXP ahri_tre_result_payload_descriptor_bridge(SEXP path, SEXP result_external, 
 SEXP ahri_tre_result_payload_bytes_bridge(SEXP path, SEXP result_external, SEXP index) {
     const char *library_path = CHAR(STRING_ELT(path, 0));
     ahri_tre_result *result = (ahri_tre_result *)R_ExternalPtrAddr(result_external);
-    void *handle = open_library(library_path);
+    tre_lib_handle handle = open_library(library_path);
     ahri_tre_status (*func)(const ahri_tre_result *, size_t, ahri_tre_byte_view *) =
         (ahri_tre_status (*)(const ahri_tre_result *, size_t, ahri_tre_byte_view *))symbol(handle, "ahri_tre_result_payload_bytes_borrowed");
     ahri_tre_byte_view view;
@@ -324,7 +374,7 @@ SEXP ahri_tre_result_payload_bytes_bridge(SEXP path, SEXP result_external, SEXP 
         UNPROTECT(1);
     }
     Rf_setAttrib(out, R_NamesSymbol, names);
-    dlclose(handle);
+    tre_dlclose(handle);
     UNPROTECT(2);
     return out;
 }

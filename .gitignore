@@ -10,4 +10,7 @@ src/*.dylib
 dist/
 .lake/
 .devcontainer/.env
+.devcontainer/runtime/*
+!.devcontainer/runtime/.gitkeep
+!.devcontainer/runtime/README.md
 .env

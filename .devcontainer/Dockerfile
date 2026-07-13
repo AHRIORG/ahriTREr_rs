@@ -2,6 +2,10 @@
 FROM rocker/r-ver:4.4.2
 
 ARG AHRI_TRE_RELEASE_TAG=v0.8.3
+ARG AHRI_TRE_RELEASE_REPOSITORY=AHRIORG/ahri-tre-rs
+ARG AHRI_TRE_ALLOW_LATEST_FALLBACK=1
+ARG AHRI_TRE_RUNTIME_LOCAL_ARCHIVE=
+ARG AHRI_TRE_RUNTIME_LOCAL_CHECKSUM=
 
 ENV AHRI_TRE_RUNTIME_ROOT=/opt/ahri-tre-runtime
 ENV PATH="${AHRI_TRE_RUNTIME_ROOT}/bin:${PATH}"
@@ -21,9 +25,15 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY .devcontainer/install-ahri-tre-runtime.sh /usr/local/bin/install-ahri-tre-runtime
+COPY .devcontainer/runtime/ /tmp/ahri-tre-runtime-cache/
 RUN --mount=type=secret,id=github_token,required=false \
     GITHUB_TOKEN="$(cat /run/secrets/github_token 2>/dev/null || true)" \
     AHRI_TRE_RELEASE_TAG="${AHRI_TRE_RELEASE_TAG}" \
+    AHRI_TRE_RELEASE_REPOSITORY="${AHRI_TRE_RELEASE_REPOSITORY}" \
+    AHRI_TRE_ALLOW_LATEST_FALLBACK="${AHRI_TRE_ALLOW_LATEST_FALLBACK}" \
+    AHRI_TRE_RUNTIME_LOCAL_ARCHIVE="${AHRI_TRE_RUNTIME_LOCAL_ARCHIVE}" \
+    AHRI_TRE_RUNTIME_LOCAL_CHECKSUM="${AHRI_TRE_RUNTIME_LOCAL_CHECKSUM}" \
+    AHRI_TRE_RUNTIME_CACHE_DIR="/tmp/ahri-tre-runtime-cache" \
     bash /usr/local/bin/install-ahri-tre-runtime
 
 RUN printf '%s\n' \

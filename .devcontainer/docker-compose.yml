@@ -7,6 +7,10 @@ services:
       dockerfile: .devcontainer/Dockerfile
       args:
         AHRI_TRE_RELEASE_TAG: ${AHRI_TRE_RELEASE_TAG:-v0.8.3}
+        AHRI_TRE_RELEASE_REPOSITORY: ${AHRI_TRE_RELEASE_REPOSITORY:-AHRIORG/ahri-tre-rs}
+        AHRI_TRE_ALLOW_LATEST_FALLBACK: ${AHRI_TRE_ALLOW_LATEST_FALLBACK:-1}
+        AHRI_TRE_RUNTIME_LOCAL_ARCHIVE: ${AHRI_TRE_RUNTIME_LOCAL_ARCHIVE:-}
+        AHRI_TRE_RUNTIME_LOCAL_CHECKSUM: ${AHRI_TRE_RUNTIME_LOCAL_CHECKSUM:-}
       secrets:
         - github_token
     init: true

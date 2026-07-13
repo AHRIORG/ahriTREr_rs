@@ -66,7 +66,13 @@ The container image installs the `v0.8.3` AHRI TRE runtime release from
 `AHRIORG/ahri-tre-rs`, selecting the Linux artifact that matches `uname -m`, and
 exports `AHRI_TRE_RUNTIME_ROOT=/opt/ahri-tre-runtime`. If the release is
 private, the devcontainer build requires `GITHUB_TOKEN` in the build
-environment.
+environment. Set `AHRI_TRE_RELEASE_REPOSITORY` in `.devcontainer/.env` if
+runtime artifacts are hosted in a different GitHub repository.
+
+For offline/private development where release access is unavailable, stage a
+runtime archive under `.devcontainer/runtime/`. The installer attempts local
+archive install before GitHub release download and will verify checksums when
+an adjacent `.sha256` or `.sha256sum` file is present.
 
 ## Next Steps
 

@@ -36,8 +36,17 @@ Copy it to `.devcontainer/.env` only when you need local overrides; the live
 It also installs the AHRI TRE `v0.8.3` runtime release for the container
 architecture and exports `AHRI_TRE_RUNTIME_ROOT=/opt/ahri-tre-runtime`. Set
 `AHRI_TRE_RELEASE_TAG` at build time if you need to test another runtime
-release. If the runtime release is private, set `GITHUB_TOKEN` in the shell that
-rebuilds the devcontainer so Docker can download the release assets.
+release. Set `AHRI_TRE_RELEASE_REPOSITORY` if runtime artifacts are published in
+a different GitHub repository. If the runtime release is private, set
+`GITHUB_TOKEN` in the shell that rebuilds the devcontainer so Docker can
+download the release assets.
+
+If release access is unavailable, stage a runtime archive under
+`.devcontainer/runtime/` and rebuild. The installer auto-detects archives named
+like `ahri-tre-<version>-<target>.tar.gz` for the container architecture and
+uses an adjacent `.sha256` or `.sha256sum` file when present. You can override
+discovery with `AHRI_TRE_RUNTIME_LOCAL_ARCHIVE` and
+`AHRI_TRE_RUNTIME_LOCAL_CHECKSUM` in `.devcontainer/.env`.
 
 `AHRI_TRE_LAKE_CONTAINER_PATH` is the container-visible lake storage location
 for local development. Runtime code should continue to use `TRE_LAKE_PATH`.
@@ -46,6 +55,13 @@ Run tests in the devcontainer with:
 
 ```bash
 R -q -e 'devtools::test()'
+```
+
+On Windows PowerShell, prefer `R.exe` when running locally because `R` may
+resolve to an alias in some shells:
+
+```powershell
+R.exe -q -e "devtools::test()"
 ```
 
 Run the shared binding-contract smoke path against a staged package with:
