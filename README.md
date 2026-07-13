@@ -64,6 +64,35 @@ resolve to an alias in some shells:
 R.exe -q -e "devtools::test()"
 ```
 
+## Project Organization
+
+The package is organized by responsibility:
+
+- `R/artifact.R`, `R/ffi.R`, `R/runtime.R`, `R/protocol.R`, `R/payloads.R`, `R/errors.R`:
+  runtime artifact discovery, ABI bridge calls, lifecycle, protocol transport,
+  payload conversion, and error handling.
+- `R/commands-core.R`:
+  shared request envelope helpers for command wrappers.
+- `R/commands-*.R`:
+  generated command wrappers split by domain (`assets`, `auth-session`,
+  `datastore`, `entities`, `local`, `study`).
+- `tests/testthat/`:
+  contract and wrapper behavior tests.
+- `tools/`:
+  regeneration scripts for wrapper/docs artifacts.
+
+Regenerate command wrappers after schema updates:
+
+```powershell
+& "tools/generate_wrappers.ps1"
+```
+
+Regenerate TRE command reference and schema-derived docs:
+
+```powershell
+& "tools/generate_tre_docs.ps1"
+```
+
 Run the shared binding-contract smoke path against a staged package with:
 
 ```bash

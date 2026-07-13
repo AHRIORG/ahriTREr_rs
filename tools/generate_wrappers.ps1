@@ -3,7 +3,8 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $schemaPath = Join-Path $root 'docs\tre-schema-map.json'
 $namespacePath = Join-Path $root 'NAMESPACE'
-$wrappersPath = Join-Path $root 'R\wrappers.R'
+$legacyWrappersPath = Join-Path $root 'R\wrappers.R'
+$corePath = Join-Path $root 'R\commands-core.R'
 $rdPath = Join-Path $root 'man\tre-command-wrappers.Rd'
 
 $json = Get-Content $schemaPath -Raw | ConvertFrom-Json
@@ -17,66 +18,79 @@ foreach ($cat in $json.categories.PSObject.Properties) {
             $rows += [pscustomobject]@{
                 Function = $fn
                 Command = ($item.command | Out-String).Trim()
+                Category = $cat.Name
             }
         }
     }
 }
 $rows = $rows | Sort-Object Function -Unique
 
-$existing = Get-ChildItem (Join-Path $root 'R') -Filter '*.R' | ForEach-Object {
-    Select-String -Path $_.FullName -Pattern '^([A-Za-z0-9_\.]+)\s*<-\s*function\s*\(' | ForEach-Object {
-        $_.Matches[0].Groups[1].Value
-    }
-} | Sort-Object -Unique
-
-$outstanding = $rows | Where-Object { $existing -notcontains $_.Function } | Sort-Object Function
-
-$wsb = New-Object System.Text.StringBuilder
-[void]$wsb.AppendLine('TRE_PROTOCOL_VERSION <- "1.0.0"')
-[void]$wsb.AppendLine('')
-[void]$wsb.AppendLine('new_tre_protocol_request <- function(kind, body = list(), protocol_version = TRE_PROTOCOL_VERSION) {')
-[void]$wsb.AppendLine('  list(')
-[void]$wsb.AppendLine('    protocol_version = protocol_version,')
-[void]$wsb.AppendLine('    kind = kind,')
-[void]$wsb.AppendLine('    body = body %||% list()')
-[void]$wsb.AppendLine('  )')
-[void]$wsb.AppendLine('}')
-[void]$wsb.AppendLine('')
-[void]$wsb.AppendLine('tre_command_call <- function(client, kind, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {')
-[void]$wsb.AppendLine('  body <- if (is.null(.body)) list(...) else .body')
-[void]$wsb.AppendLine('  execute_json(')
-[void]$wsb.AppendLine('    client = client,')
-[void]$wsb.AppendLine('    request = new_tre_protocol_request(')
-[void]$wsb.AppendLine('      kind = kind,')
-[void]$wsb.AppendLine('      body = body,')
-[void]$wsb.AppendLine('      protocol_version = .protocol_version')
-[void]$wsb.AppendLine('    )')
-[void]$wsb.AppendLine('  )')
-[void]$wsb.AppendLine('}')
-[void]$wsb.AppendLine('')
-
-foreach ($row in $outstanding) {
-    $kind = $row.Function -replace '_', '.'
-    [void]$wsb.AppendLine(('{0} <- function(client, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {{' -f $row.Function))
-    [void]$wsb.AppendLine(('  tre_command_call(client, "{0}", ..., .body = .body, .protocol_version = .protocol_version)' -f $kind))
-    [void]$wsb.AppendLine('}')
-    [void]$wsb.AppendLine('')
+$categoryFileMap = [ordered]@{
+    'Assets, Datafiles, Datasets' = 'commands-assets.R'
+    'Authentication, Daemon, Sessions' = 'commands-auth-session.R'
+    'Datastore, Semantic Catalog' = 'commands-datastore.R'
+    'Entities, Relations, Transformations, Ingest' = 'commands-entities.R'
+    'Local Commands' = 'commands-local.R'
+    'Study, Governance' = 'commands-study.R'
 }
 
-Set-Content -Path $wrappersPath -Value $wsb.ToString() -Encoding UTF8
+$core = New-Object System.Text.StringBuilder
+[void]$core.AppendLine('TRE_PROTOCOL_VERSION <- "1.0.0"')
+[void]$core.AppendLine('')
+[void]$core.AppendLine('new_tre_protocol_request <- function(kind, body = list(), protocol_version = TRE_PROTOCOL_VERSION) {')
+[void]$core.AppendLine('  list(')
+[void]$core.AppendLine('    protocol_version = protocol_version,')
+[void]$core.AppendLine('    kind = kind,')
+[void]$core.AppendLine('    body = body %||% list()')
+[void]$core.AppendLine('  )')
+[void]$core.AppendLine('}')
+[void]$core.AppendLine('')
+[void]$core.AppendLine('tre_command_call <- function(client, kind, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {')
+[void]$core.AppendLine('  body <- if (is.null(.body)) list(...) else .body')
+[void]$core.AppendLine('  execute_json(')
+[void]$core.AppendLine('    client = client,')
+[void]$core.AppendLine('    request = new_tre_protocol_request(')
+[void]$core.AppendLine('      kind = kind,')
+[void]$core.AppendLine('      body = body,')
+[void]$core.AppendLine('      protocol_version = .protocol_version')
+[void]$core.AppendLine('    )')
+[void]$core.AppendLine('  )')
+[void]$core.AppendLine('}')
+[void]$core.AppendLine('')
+Set-Content -Path $corePath -Value $core.ToString() -Encoding UTF8
+
+foreach ($categoryName in $categoryFileMap.Keys) {
+    $categoryRows = $rows | Where-Object { $_.Category -eq $categoryName } | Sort-Object Function
+    $categoryPath = Join-Path $root ("R\" + $categoryFileMap[$categoryName])
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine(("# Auto-generated command wrappers for {0}" -f $categoryName))
+    [void]$sb.AppendLine('')
+    foreach ($row in $categoryRows) {
+        $kind = $row.Function -replace '_', '.'
+        [void]$sb.AppendLine(('{0} <- function(client, ..., .body = NULL, .protocol_version = TRE_PROTOCOL_VERSION) {{' -f $row.Function))
+        [void]$sb.AppendLine(('  tre_command_call(client, "{0}", ..., .body = .body, .protocol_version = .protocol_version)' -f $kind))
+        [void]$sb.AppendLine('}')
+        [void]$sb.AppendLine('')
+    }
+    Set-Content -Path $categoryPath -Value $sb.ToString() -Encoding UTF8
+}
+
+if (Test-Path $legacyWrappersPath) {
+    Remove-Item -Path $legacyWrappersPath -Force
+}
 
 $nsLines = Get-Content $namespacePath
 $useDynLib = $nsLines | Where-Object { $_ -like 'useDynLib(*' } | Select-Object -First 1
 $currentExports = $nsLines | Where-Object { $_ -match '^export\(' } | ForEach-Object {
     ($_ -replace '^export\(', '') -replace '\)$', ''
 }
-$allExports = @($currentExports + ($outstanding | ForEach-Object { $_.Function })) | Sort-Object -Unique
+$allExports = @($currentExports + ($rows | ForEach-Object { $_.Function })) | Sort-Object -Unique
 $nextNamespace = @($useDynLib) + ($allExports | ForEach-Object { "export($_)" })
 Set-Content -Path $namespacePath -Value ($nextNamespace -join "`n") -Encoding UTF8
 
 $rdb = New-Object System.Text.StringBuilder
 [void]$rdb.AppendLine('\name{tre-command-wrappers}')
-foreach ($row in $outstanding) {
+foreach ($row in ($rows | Sort-Object Function)) {
     [void]$rdb.AppendLine(('\alias{{{0}}}' -f $row.Function))
 }
 [void]$rdb.AppendLine('\title{Generated TRE Command Wrapper Functions}')
@@ -100,7 +114,13 @@ foreach ($row in $outstanding) {
 
 Set-Content -Path $rdPath -Value $rdb.ToString() -Encoding UTF8
 
-Write-Output "WROTE wrappers: $($outstanding.Count)"
-Write-Output "WROTE file: $wrappersPath"
+Write-Output "WROTE wrappers: $($rows.Count)"
+Write-Output "WROTE file: $corePath"
+foreach ($name in $categoryFileMap.Values) {
+    Write-Output ("WROTE file: " + (Join-Path $root ("R\\" + $name)))
+}
+if (-not (Test-Path $legacyWrappersPath)) {
+    Write-Output "REMOVED file: $legacyWrappersPath"
+}
 Write-Output "WROTE file: $namespacePath"
 Write-Output "WROTE file: $rdPath"
