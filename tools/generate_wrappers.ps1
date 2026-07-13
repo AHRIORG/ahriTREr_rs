@@ -1,11 +1,11 @@
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
-$schemaPath = Join-Path $root 'docs\tre-schema-map.json'
+$schemaPath = Join-Path $root 'docs\tre_schema_map.json'
 $namespacePath = Join-Path $root 'NAMESPACE'
 $legacyWrappersPath = Join-Path $root 'R\wrappers.R'
-$corePath = Join-Path $root 'R\commands-core.R'
-$rdPath = Join-Path $root 'man\tre-command-wrappers.Rd'
+$corePath = Join-Path $root 'R\core.R'
+$rdPath = Join-Path $root 'man\tre_command_wrappers.Rd'
 
 $json = Get-Content $schemaPath -Raw | ConvertFrom-Json
 
@@ -26,12 +26,12 @@ foreach ($cat in $json.categories.PSObject.Properties) {
 $rows = $rows | Sort-Object Function -Unique
 
 $categoryFileMap = [ordered]@{
-    'Assets, Datafiles, Datasets' = 'commands-assets.R'
-    'Authentication, Daemon, Sessions' = 'commands-auth-session.R'
-    'Datastore, Semantic Catalog' = 'commands-datastore.R'
-    'Entities, Relations, Transformations, Ingest' = 'commands-entities.R'
-    'Local Commands' = 'commands-local.R'
-    'Study, Governance' = 'commands-study.R'
+    'Assets, Datafiles, Datasets' = 'assets.R'
+    'Authentication, Daemon, Sessions' = 'auth_session.R'
+    'Datastore, Semantic Catalog' = 'datastore.R'
+    'Entities, Relations, Transformations, Ingest' = 'entities.R'
+    'Local Commands' = 'local.R'
+    'Study, Governance' = 'study.R'
 }
 
 $core = New-Object System.Text.StringBuilder

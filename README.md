@@ -71,10 +71,11 @@ The package is organized by responsibility:
 - `R/artifact.R`, `R/ffi.R`, `R/runtime.R`, `R/protocol.R`, `R/payloads.R`, `R/errors.R`:
   runtime artifact discovery, ABI bridge calls, lifecycle, protocol transport,
   payload conversion, and error handling.
-- `R/commands-core.R`:
+- `R/core.R`:
   shared request envelope helpers for command wrappers.
-- `R/commands-*.R`:
-  generated command wrappers split by domain (`assets`, `auth-session`,
+- `R/*.R` domain modules (`assets.R`, `auth_session.R`, `datastore.R`,
+  `entities.R`, `local.R`, `study.R`):
+  generated command wrappers split by domain (`assets`, `auth_session`,
   `datastore`, `entities`, `local`, `study`).
 - `tests/testthat/`:
   contract and wrapper behavior tests.
@@ -93,7 +94,7 @@ Regenerate TRE command reference and schema-derived docs:
 & "tools/generate_tre_docs.ps1"
 ```
 
-Run the shared binding-contract smoke path against a staged package with:
+Run the shared binding_contract smoke path against a staged package with:
 
 ```bash
 AHRI_TRE_RUNTIME_ROOT=/workspaces/ahri-tre-r/dist/ahri-tre-dev \

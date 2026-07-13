@@ -37,5 +37,5 @@ This compares function names from TRE Public Interfaces.csv with currently imple
 3. Session/auth read operations: auth_status, session_status, session_list.
 4. Search surfaces: study_search, dataset_search, datafile_search, variable_search.
 
-See docs/tre-r-wrapper-semantic-gap-analysis.md for capability-level mapping and prioritized phases.
+See docs/tre_r_wrapper_semantic_gap_analysis.md for capability-level mapping and prioritized phases.
 

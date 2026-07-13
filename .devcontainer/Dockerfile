@@ -24,7 +24,7 @@ RUN apt-get update \
         sudo \
     && rm -rf /var/lib/apt/lists/*
 
-COPY .devcontainer/install-ahri-tre-runtime.sh /usr/local/bin/install-ahri-tre-runtime
+COPY .devcontainer/install_ahri_tre_runtime.sh /usr/local/bin/install_ahri_tre_runtime
 COPY .devcontainer/runtime/ /tmp/ahri-tre-runtime-cache/
 RUN --mount=type=secret,id=github_token,required=false \
     GITHUB_TOKEN="$(cat /run/secrets/github_token 2>/dev/null || true)" \
@@ -34,7 +34,7 @@ RUN --mount=type=secret,id=github_token,required=false \
     AHRI_TRE_RUNTIME_LOCAL_ARCHIVE="${AHRI_TRE_RUNTIME_LOCAL_ARCHIVE}" \
     AHRI_TRE_RUNTIME_LOCAL_CHECKSUM="${AHRI_TRE_RUNTIME_LOCAL_CHECKSUM}" \
     AHRI_TRE_RUNTIME_CACHE_DIR="/tmp/ahri-tre-runtime-cache" \
-    bash /usr/local/bin/install-ahri-tre-runtime
+    bash /usr/local/bin/install_ahri_tre_runtime
 
 RUN printf '%s\n' \
         'export AHRI_TRE_RUNTIME_ROOT=/opt/ahri-tre-runtime' \

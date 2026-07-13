@@ -37,7 +37,7 @@ $studyEnums = @(
 
 $grouped = $data | Group-Object Category | Sort-Object Name
 
-$mdPath = Join-Path $docsDir 'tre-command-reference.md'
+$mdPath = Join-Path $docsDir 'tre_command_reference.md'
 $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('# TRE Public Command Reference')
 [void]$sb.AppendLine()
@@ -69,7 +69,7 @@ foreach ($e in $runtimeEnums) { [void]$sb.AppendLine("| $($e.value) | $($e.meani
 foreach ($e in $studyEnums) { [void]$sb.AppendLine("| $($e.value) | $($e.meaning) |") }
 Set-Content -Path $mdPath -Value $sb.ToString() -Encoding UTF8
 
-$jsonPath = Join-Path $docsDir 'tre-schema-map.json'
+$jsonPath = Join-Path $docsDir 'tre_schema_map.json'
 $categories = [ordered]@{}
 foreach ($g in $grouped) {
     $categories[$g.Name] = @(
@@ -110,7 +110,7 @@ $rNames = $rFunctions.Name | Sort-Object -Unique
 $apiFunctions = $data.Function | Sort-Object -Unique
 $directMatches = $apiFunctions | Where-Object { $rNames -contains $_ }
 
-$gapPath = Join-Path $docsDir 'tre-r-wrapper-gap-analysis.md'
+$gapPath = Join-Path $docsDir 'tre_r_wrapper_gap_analysis.md'
 $gb = New-Object System.Text.StringBuilder
 [void]$gb.AppendLine('# TRE Interface vs R Wrapper Gap Analysis')
 [void]$gb.AppendLine()
@@ -154,11 +154,11 @@ if ($directMatches.Count -eq 0) {
 [void]$gb.AppendLine('3. Session/auth read operations: auth_status, session_status, session_list.')
 [void]$gb.AppendLine('4. Search surfaces: study_search, dataset_search, datafile_search, variable_search.')
 [void]$gb.AppendLine()
-[void]$gb.AppendLine('See docs/tre-r-wrapper-semantic-gap-analysis.md for capability-level mapping and prioritized phases.')
+[void]$gb.AppendLine('See docs/tre_r_wrapper_semantic_gap_analysis.md for capability-level mapping and prioritized phases.')
 Set-Content -Path $gapPath -Value $gb.ToString() -Encoding UTF8
 
 # Semantic coverage analysis (capability-level mapping, not strict name equality)
-$semanticPath = Join-Path $docsDir 'tre-r-wrapper-semantic-gap-analysis.md'
+$semanticPath = Join-Path $docsDir 'tre_r_wrapper_semantic_gap_analysis.md'
 $sb2 = New-Object System.Text.StringBuilder
 [void]$sb2.AppendLine('# TRE Interface vs R Wrapper Semantic Gap Analysis')
 [void]$sb2.AppendLine()

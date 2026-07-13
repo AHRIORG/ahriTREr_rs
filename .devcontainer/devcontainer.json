@@ -1,6 +1,6 @@
 {
   "name": "ahri-tre-r",
-  "dockerComposeFile": "docker-compose.yml",
+  "dockerComposeFile": "docker_compose.yml",
   "service": "r",
   "workspaceFolder": "/workspaces/ahri-tre-r",
   "remoteUser": "vscode",
