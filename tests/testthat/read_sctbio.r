@@ -118,8 +118,7 @@ cat("[INFO] Using ahritre package wrappers.\n")
 cat("[INFO] AHRI_TRE_RUNTIME_ROOT=", Sys.getenv("AHRI_TRE_RUNTIME_ROOT", unset = ""), "\n", sep = "")
 
 if (!runtime_preflight()) {
-  cat("[WARN] Skipping execution because AHRI TRE runtime files are not installed for the configured artifact root.\n")
-  invisible(FALSE)
+  stop("AHRI TRE runtime files are not installed for the configured artifact root.", call. = FALSE)
 } else {
 
 bootstrap <- tryCatch(
@@ -130,12 +129,17 @@ bootstrap <- tryCatch(
   error = function(e) {
     message_text <- conditionMessage(e)
     if (is_connectivity_failure(message_text)) {
-      cat("[WARN] TRE runtime/datastore is unavailable from this environment.\n")
-      cat("[WARN] TRE_SERVER=", Sys.getenv("TRE_SERVER", unset = ""), "\n", sep = "")
-      cat("[WARN] TRE_TEST_DBNAME=", Sys.getenv("TRE_TEST_DBNAME", unset = ""), "\n", sep = "")
-      cat("[WARN] Skipping execution because the configured runtime/datastore could not be initialized.\n")
-      cat("[WARN] Details: ", message_text, "\n", sep = "")
-      return(NULL)
+      stop(
+        paste0(
+          "TRE runtime/datastore is unavailable. TRE_SERVER=",
+          Sys.getenv("TRE_SERVER", unset = ""),
+          ", TRE_TEST_DBNAME=",
+          Sys.getenv("TRE_TEST_DBNAME", unset = ""),
+          ". Details: ",
+          message_text
+        ),
+        call. = FALSE
+      )
     }
     stop(e)
   }
