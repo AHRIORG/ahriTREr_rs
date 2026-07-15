@@ -194,6 +194,35 @@ tre_is_invalid_request_envelope <- function(envelope) {
   grepl("request envelope is invalid", message, fixed = TRUE)
 }
 
+tre_is_no_live_session_envelope <- function(envelope) {
+  if (is.null(envelope) || !is.list(envelope)) {
+    return(FALSE)
+  }
+  message <- envelope$error$message %||% envelope$message %||% ""
+  grepl("no live session is selected", message, fixed = TRUE)
+}
+
+tre_is_daemon_connection_envelope <- function(envelope) {
+  if (is.null(envelope) || !is.list(envelope)) {
+    return(FALSE)
+  }
+  message <- envelope$error$message %||% envelope$message %||% ""
+  any(vapply(
+    c(
+      "daemon closed the protocol connection",
+      "daemon socket",
+      "stale"
+    ),
+    function(p) grepl(p, message, fixed = TRUE),
+    logical(1)
+  ))
+}
+
+tre_auto_session_enabled <- function() {
+  flag <- tolower(Sys.getenv("AHRI_TRE_AUTO_SESSION_USE", unset = "true"))
+  !flag %in% c("0", "false", "no", "off")
+}
+
 tre_cli_binary <- function() {
   runtime_root <- Sys.getenv("AHRI_TRE_RUNTIME_ROOT", unset = "")
   if (!nzchar(runtime_root)) {
@@ -295,6 +324,115 @@ tre_execute_via_cli <- function(kind, body) {
   list(envelope = envelope, payloads = list())
 }
 
+tre_cli_try_activate_live_session <- function() {
+  cli_bin <- tre_cli_binary()
+  if (is.null(cli_bin)) {
+    return(FALSE)
+  }
+
+  runtime_root <- Sys.getenv("AHRI_TRE_RUNTIME_ROOT", unset = "")
+  if (!nzchar(runtime_root)) {
+    runtime_root <- "/opt/ahri-tre-runtime"
+  }
+  runtime_lib <- file.path(normalizePath(path.expand(runtime_root), mustWork = FALSE), "lib")
+  ld_path <- Sys.getenv("LD_LIBRARY_PATH", unset = "")
+  env <- c(paste0("LD_LIBRARY_PATH=", paste(c(runtime_lib, ld_path), collapse = ":")))
+
+  sessions_out <- suppressWarnings(system2(
+    cli_bin,
+    args = c("session", "list", "--format", "json"),
+    stdout = TRUE,
+    stderr = TRUE,
+    env = env
+  ))
+  sessions_json <- tre_parse_first_json_object(sessions_out)
+  if (is.null(sessions_json) || !isTRUE(sessions_json$ok)) {
+    return(FALSE)
+  }
+
+  sessions <- sessions_json$data$sessions
+  if (is.null(sessions) || length(sessions) == 0L) {
+    return(FALSE)
+  }
+
+  session_name <- NULL
+  for (s in sessions) {
+    if (identical(s$availability %||% "", "live")) {
+      session_name <- s$session$name %||% NULL
+      if (is.character(session_name) && nzchar(session_name)) {
+        break
+      }
+      session_name <- NULL
+    }
+  }
+
+  if (is.null(session_name)) {
+    for (s in sessions) {
+      name <- s$session$name %||% NULL
+      mode <- s$auth_mode %||% ""
+      availability <- s$availability %||% ""
+      if (!is.character(name) || !nzchar(name)) {
+        next
+      }
+      if (identical(availability, "live") || !grepl("oauth", mode, ignore.case = TRUE)) {
+        next
+      }
+
+      reopen_out <- suppressWarnings(system2(
+        cli_bin,
+        args = c("session", "reopen", name, "--format", "json"),
+        stdout = TRUE,
+        stderr = TRUE,
+        env = env
+      ))
+      reopen_json <- tre_parse_first_json_object(reopen_out)
+      if (isTRUE(reopen_json$ok)) {
+        session_name <- name
+        break
+      }
+    }
+
+    if (is.null(session_name)) {
+      return(FALSE)
+    }
+  }
+
+  use_out <- suppressWarnings(system2(
+    cli_bin,
+    args = c("session", "use", session_name, "--format", "json"),
+    stdout = TRUE,
+    stderr = TRUE,
+    env = env
+  ))
+  use_json <- tre_parse_first_json_object(use_out)
+  isTRUE(use_json$ok)
+}
+
+tre_cli_try_restart_daemon <- function() {
+  cli_bin <- tre_cli_binary()
+  if (is.null(cli_bin)) {
+    return(FALSE)
+  }
+
+  runtime_root <- Sys.getenv("AHRI_TRE_RUNTIME_ROOT", unset = "")
+  if (!nzchar(runtime_root)) {
+    runtime_root <- "/opt/ahri-tre-runtime"
+  }
+  runtime_lib <- file.path(normalizePath(path.expand(runtime_root), mustWork = FALSE), "lib")
+  ld_path <- Sys.getenv("LD_LIBRARY_PATH", unset = "")
+  env <- c(paste0("LD_LIBRARY_PATH=", paste(c(runtime_lib, ld_path), collapse = ":")))
+
+  start_out <- suppressWarnings(system2(
+    cli_bin,
+    args = c("daemon", "start", "--format", "json"),
+    stdout = TRUE,
+    stderr = TRUE,
+    env = env
+  ))
+  start_json <- tre_parse_first_json_object(start_out)
+  isTRUE(start_json$ok)
+}
+
 tre_normalize_output <- function(result, output_label = NULL, status_and_purpose = NULL, function_name = NULL) {
   envelope <- result$envelope %||% list()
   if (!tre_result_ok(envelope)) {
@@ -335,19 +473,58 @@ tre_command_call <- function(
     explicit_body = .body
   )
 
-  result <- execute_json(
-    client = client,
-    request = new_tre_protocol_request(
-      kind = kind,
-      body = body,
-      protocol_version = .protocol_version
-    )
+  request <- new_tre_protocol_request(
+    kind = kind,
+    body = body,
+    protocol_version = .protocol_version
   )
+
+  result <- execute_json(client = client, request = request)
+  used_cli <- FALSE
 
   if (tre_is_invalid_request_envelope(result$envelope %||% list())) {
     cli_result <- tre_execute_via_cli(kind = kind, body = body)
     if (!is.null(cli_result)) {
       result <- cli_result
+      used_cli <- TRUE
+    }
+  }
+
+  if (tre_auto_session_enabled() && tre_is_no_live_session_envelope(result$envelope %||% list())) {
+    if (tre_cli_try_activate_live_session()) {
+      if (isTRUE(used_cli)) {
+        cli_result <- tre_execute_via_cli(kind = kind, body = body)
+        if (!is.null(cli_result)) {
+          result <- cli_result
+        }
+      } else {
+        result <- execute_json(client = client, request = request)
+        if (tre_is_invalid_request_envelope(result$envelope %||% list())) {
+          cli_result <- tre_execute_via_cli(kind = kind, body = body)
+          if (!is.null(cli_result)) {
+            result <- cli_result
+          }
+        }
+      }
+    }
+  }
+
+  if (tre_auto_session_enabled() && tre_is_daemon_connection_envelope(result$envelope %||% list())) {
+    if (tre_cli_try_restart_daemon()) {
+      if (isTRUE(used_cli)) {
+        cli_result <- tre_execute_via_cli(kind = kind, body = body)
+        if (!is.null(cli_result)) {
+          result <- cli_result
+        }
+      } else {
+        result <- execute_json(client = client, request = request)
+        if (tre_is_invalid_request_envelope(result$envelope %||% list())) {
+          cli_result <- tre_execute_via_cli(kind = kind, body = body)
+          if (!is.null(cli_result)) {
+            result <- cli_result
+          }
+        }
+      }
     }
   }
 
