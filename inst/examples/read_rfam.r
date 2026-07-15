@@ -114,6 +114,10 @@ is_invalid_request_error <- function(value) {
   inherits(value, "try-error") && grepl("request envelope is invalid", as.character(value), fixed = TRUE)
 }
 
+is_no_live_session_error <- function(value) {
+  inherits(value, "try-error") && grepl("no live session is selected", as.character(value), fixed = TRUE)
+}
+
 tre_cli_binary <- function() {
   runtime_root <- normalizePath(path.expand(Sys.getenv("AHRI_TRE_RUNTIME_ROOT", unset = "")), mustWork = FALSE)
   file.path(runtime_root, "bin", "ahri-tre")
@@ -150,9 +154,108 @@ tre_cli_json <- function(args) {
   parsed
 }
 
+is_daemon_unhealthy_message <- function(message_text) {
+  grepl(
+    paste(
+      c(
+        "daemon closed the protocol connection",
+        "daemon socket",
+        "stale"
+      ),
+      collapse = "|"
+    ),
+    message_text,
+    ignore.case = TRUE
+  )
+}
+
+tre_cli_restart_daemon <- function() {
+  restart <- try(tre_cli_json(c("daemon", "start", "--format", "json")), silent = TRUE)
+  if (inherits(restart, "try-error") || !isTRUE(restart$ok)) {
+    return(FALSE)
+  }
+  TRUE
+}
+
+tre_cli_try_reopen_session <- function() {
+  sessions_result <- try(tre_cli_json(c("session", "list", "--format", "json")), silent = TRUE)
+  if (inherits(sessions_result, "try-error") || !isTRUE(sessions_result$ok)) {
+    return(list(ok = FALSE, reason = "could not list sessions"))
+  }
+
+  sessions <- sessions_result$data$sessions %||% list()
+  if (length(sessions) == 0L) {
+    return(list(ok = FALSE, reason = "no known sessions"))
+  }
+
+  session_names <- vapply(sessions, function(s) s$session$name %||% "", character(1))
+  auth_modes <- vapply(sessions, function(s) s$auth_mode %||% "", character(1))
+  availability <- vapply(sessions, function(s) s$availability %||% "", character(1))
+  candidates <- session_names[nzchar(session_names) & availability == "closed"]
+  if (length(candidates) == 0L) {
+    candidates <- session_names[nzchar(session_names)]
+  }
+  if (length(candidates) == 0L) {
+    return(list(ok = FALSE, reason = "no usable session names"))
+  }
+
+  candidate_idx <- which(session_names == candidates[[1]])[[1]]
+  candidate_auth_mode <- auth_modes[[candidate_idx]]
+  if (identical(candidate_auth_mode, "legacy_password")) {
+    return(list(
+      ok = FALSE,
+      reason = paste0(
+        "session ", candidates[[1]],
+        " uses legacy_password and cannot be reopened via session.reopen; recreate or open an OAuth session"
+      )
+    ))
+  }
+
+  reopen <- try(tre_cli_json(c("session", "reopen", candidates[[1]], "--format", "json")), silent = TRUE)
+  if (inherits(reopen, "try-error") || !isTRUE(reopen$ok)) {
+    reopen_message <- if (inherits(reopen, "try-error")) {
+      as.character(reopen)
+    } else {
+      reopen$error$message %||% reopen$message %||% "session reopen failed"
+    }
+    return(list(ok = FALSE, reason = reopen_message))
+  }
+  list(ok = TRUE, reason = "reopened")
+}
+
 tre_cli_call <- function(args) {
   result <- tre_cli_json(args)
+  retried <- FALSE
+
+  if (!isTRUE(result$ok)) {
+    message_text <- result$error$message %||% result$message %||% "unknown CLI error"
+    if (is_daemon_unhealthy_message(message_text)) {
+      if (tre_cli_restart_daemon()) {
+        retried <- TRUE
+        result <- tre_cli_json(args)
+      }
+    } else if (grepl("no live session is selected", message_text, fixed = TRUE)) {
+      session_recovery <- tre_cli_try_reopen_session()
+      if (isTRUE(session_recovery$ok)) {
+        retried <- TRUE
+        result <- tre_cli_json(args)
+      } else {
+        stop(
+          paste0(
+            "CLI call failed: ", message_text,
+            " | recovery failed: ", session_recovery$reason,
+            "; hint: run `ahri-tre session open-oauth <name> --profile <profile>` or recreate datastore session"
+          ),
+          call. = FALSE
+        )
+      }
+    }
+  }
+
   if (isTRUE(result$ok)) {
+    if (isTRUE(retried)) {
+      cat("[WARN] Recovered from daemon connectivity failure by restarting daemon and retrying CLI command.\n")
+    }
     return(result)
   }
   message_text <- result$error$message %||% result$message %||% "unknown CLI error"
@@ -209,7 +312,7 @@ if (!runtime_preflight()) {
     }
 
     domains_result <- try(domain_list(client, format = "json"), silent = TRUE)
-    cli_fallback <- is_invalid_request_error(domains_result)
+    cli_fallback <- is_invalid_request_error(domains_result) || is_no_live_session_error(domains_result)
 
     if (cli_fallback) {
       cat("[WARN] Wrapper request shape rejected by runtime; falling back to ahri-tre CLI JSON flow.\n")
