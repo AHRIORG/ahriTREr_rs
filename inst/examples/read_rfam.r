@@ -1,9 +1,38 @@
-suppressPackageStartupMessages(library(ahriTREr))
+suppressPackageStartupMessages(library(ahritre))
+
+load_project_env <- function() {
+  env_file <- ".env"
+  if (file.exists(env_file)) {
+    readRenviron(env_file)
+  }
+}
+
+runtime_preflight <- function() {
+  runtime_root <- Sys.getenv("AHRI_TRE_RUNTIME_ROOT", unset = "")
+  if (!nzchar(runtime_root)) {
+    runtime_root <- "/opt/ahri-tre-runtime"
+    Sys.setenv(AHRI_TRE_RUNTIME_ROOT = runtime_root)
+  }
+
+  runtime_root <- normalizePath(path.expand(runtime_root), mustWork = FALSE)
+  manifest_path <- file.path(runtime_root, "share", "ahri-tre", "manifest.json")
+
+  if (!file.exists(manifest_path)) {
+    cat("[WARN] Runtime preflight failed: manifest not found at ", manifest_path, "\n", sep = "")
+    cat("[INFO] To install runtime: bash .devcontainer/install_ahri_tre_runtime.sh\n")
+    return(FALSE)
+  }
+
+  TRUE
+}
 
 is_connectivity_failure <- function(message) {
   grepl(
     paste(
       c(
+        "AHRI TRE runtime manifest was not found",
+        "runtime manifest was not found under the artifact root",
+        "Failed to locate TRE runtime artifacts",
         "could not translate host name",
         "Temporary failure in name resolution",
         "Name or service not known",
@@ -21,120 +50,289 @@ is_connectivity_failure <- function(message) {
   )
 }
 
-open_datastore_oauth_from_env <- function() {
-  if (
-    nzchar(Sys.getenv("JUPYTERHUB_USER", "")) &&
-    !nzchar(Sys.getenv("AHRITRER_JUPYTERHUB_HOST", "")) &&
-    nzchar(Sys.getenv("TRE_SERVER", ""))
-  ) {
-    Sys.setenv(AHRITRER_JUPYTERHUB_HOST = paste0("https://", Sys.getenv("TRE_SERVER")))
-    cat("[INFO] Set AHRITRER_JUPYTERHUB_HOST from TRE_SERVER: ", Sys.getenv("AHRITRER_JUPYTERHUB_HOST"), "\n", sep = "")
+`%||%` <- function(lhs, rhs) {
+  if (is.null(lhs)) rhs else lhs
+}
+
+normalize_records <- function(value) {
+  if (is.null(value)) {
+    return(data.frame())
   }
-
-  oauth_session <- ahriTREr::cached_oauth_options_from_env()
-  cat("[INFO] OAuth config: issuer=", oauth_session$issuer, ", client_id=", substr(oauth_session$client_id, 1, 8), "...\n", sep = "")
-  cat("[INFO] Initializing DataStore with environment variables...\n")
-  cat(
-    "[INFO] Environment: TRE_SERVER=", Sys.getenv("TRE_SERVER"),
-    ", TRE_TEST_DBNAME=", Sys.getenv("TRE_TEST_DBNAME"),
-    ", ORCID_ISSUER=", Sys.getenv("ORCID_ISSUER"),
-    "\n",
-    sep = ""
-  )
-  datastore <- DataStore$new()
-  cat("[INFO] Opening DataStore with OAuth...\n")
-  opendatastore_oauth(
-    datastore,
-    oauth_config = list(session = oauth_session),
-    migrate_catalog = TRUE
-  )
-}
-
-runtime <- ahriTREr::runtime_platform()
-if (identical(runtime, "local") && file.exists(".env")) {
-  ahriTREr:::.load_dotenv_file(".env", overwrite = FALSE)
-}
-
-bootstrap <- tryCatch(
-  list(runtime = runtime, datastore = open_datastore_oauth_from_env()),
-  error = function(e) {
-    message_text <- conditionMessage(e)
-    if (is_connectivity_failure(message_text)) {
-      cat("[WARN] Could not connect to the TRE datastore from this runtime.\n")
-      cat("[WARN] TRE_SERVER=", Sys.getenv("TRE_SERVER", unset = ""), "\n", sep = "")
-      cat("[WARN] TRE_TEST_DBNAME=", Sys.getenv("TRE_TEST_DBNAME", unset = ""), "\n", sep = "")
-      cat("[WARN] Skipping example execution because the configured PostgreSQL host is unreachable.\n")
-      cat("[WARN] Details: ", message_text, "\n", sep = "")
-      return(NULL)
+  if (is.data.frame(value)) {
+    return(value)
+  }
+  if (is.character(value) && length(value) == 1L && nzchar(value)) {
+    parsed <- try(jsonlite::fromJSON(value, simplifyDataFrame = TRUE), silent = TRUE)
+    if (!inherits(parsed, "try-error")) {
+      return(normalize_records(parsed))
     }
-    stop(e)
   }
-)
-if (is.null(bootstrap)) {
-  invisible(FALSE)
-} else {
-  runtime <- bootstrap$runtime
-  datastore <- bootstrap$datastore
-
-  cat("[INFO] Runtime platform: ", runtime, "\n", sep = "")
-  cat("Store connected: ", !is.null(datastore$store), "\n", sep = "")
-  cat("Lake connected: ", !is.null(datastore$lake), "\n", sep = "")
-
-  domains <- get_domains(datastore)
-  cat("\n[INFO] Domains found: ", nrow(domains), "\n", sep = "")
-  print(utils::head(domains, 5))
-
-  domain <- get_domain(datastore, "Basic Science", return_mode = "objects")
-  studies <- get_studies(datastore, domain = domain)
-
-  requested_study_name <- "Rfam Database Collection"
-  study <- get_study(datastore, requested_study_name, domain = domain)
-  if (is.null(study) || nrow(study) == 0) {
-    stop("Study not found: ", requested_study_name)
-  }
-
-  datasets <- get_study_datasets(datastore, study)
-
-  cat("\n[INFO] Using domain filter: ", as.character(domain$name[[1]]), "\n", sep = "")
-  cat("\n[INFO] Studies found: ", nrow(studies), "\n", sep = "")
-  print(utils::head(studies, 5))
-  cat("\n[INFO] Selected study: ", as.character(study$name[[1]]), "\n", sep = "")
-  cat("\n[INFO] Different datasets found for selected study: ", nrow(datasets), "\n", sep = "")
-
-  vocabularies <- get_vocabularies(datastore, domain = domain)
-  variables <- get_study_variables(datastore, study)
-  cat("\n[INFO] Vocabulary entries found for selected study: ", nrow(vocabularies), "\n", sep = "")
-  print(utils::head(vocabularies, 5))
-  cat("\n[INFO] Variables found for selected study: ", nrow(variables), "\n", sep = "")
-  print(utils::head(variables, 5))
-
-  if (nrow(datasets) > 0) {
-    datasets <- datasets[order(datasets$name), , drop = FALSE]
-  }
-
-  for (i in seq_len(nrow(datasets))) {
-    dataset <- datasets[i, , drop = FALSE]
-    dataset_name <- as.character(dataset$name[[1]])
-    version_label <- as.character(dataset$version[[1]])
-    cat("\n[INFO] Reading dataset ", i, "/", nrow(datasets), ": ", dataset_name, " (", version_label, ")\n", sep = "")
-
-    rows <- try(
-      read_dataset(datastore, dataset, limit = 10L, on_missing = "error"),
+  if (is.list(value)) {
+    for (candidate in c("items", "rows", "data", "result", "output", "body", "studies", "datasets", "domains")) {
+      if (!is.null(value[[candidate]])) {
+        return(normalize_records(value[[candidate]]))
+      }
+    }
+    as_df <- try(
+      jsonlite::fromJSON(
+        jsonlite::toJSON(value, auto_unbox = TRUE),
+        simplifyDataFrame = TRUE
+      ),
       silent = TRUE
     )
-    if (inherits(rows, "try-error")) {
-      cat("[WARN] Version ", version_label, " failed: ", as.character(rows), "\n", sep = "")
-      next
-    }
-
-    cat("[INFO] Loaded version ", version_label, ": rows=", nrow(rows), ", cols=", ncol(rows), "\n", sep = "")
-    if (ncol(rows) > 0) {
-      print(rows[, seq_len(min(5, ncol(rows))), drop = FALSE])
-    } else {
-      print(rows)
+    if (!inherits(as_df, "try-error") && is.data.frame(as_df)) {
+      return(as_df)
     }
   }
+  data.frame()
+}
 
-  cat("\nClosing DataStore\n")
-  closedatastore(datastore)
+first_present_column <- function(df, candidates) {
+  present <- candidates[candidates %in% names(df)]
+  if (length(present) == 0L) {
+    return(rep(NA_character_, nrow(df)))
+  }
+  as.character(df[[present[[1]]]])
+}
+
+extract_rows_from_dataset_data <- function(result) {
+  payloads <- result$payloads %||% list()
+  arrow_payload_index <- which(vapply(payloads, function(p) identical(p$kind, "arrow_ipc"), logical(1)))[1]
+
+  if (!is.na(arrow_payload_index)) {
+    converted <- try(arrow_ipc_to_table(payloads[[arrow_payload_index]]), silent = TRUE)
+    if (!inherits(converted, "try-error")) {
+      return(as.data.frame(converted))
+    }
+    cat("[WARN] Arrow IPC payload detected but conversion failed; falling back to JSON body.\n")
+  }
+
+  normalize_records(result$data)
+}
+
+is_invalid_request_error <- function(value) {
+  inherits(value, "try-error") && grepl("request envelope is invalid", as.character(value), fixed = TRUE)
+}
+
+tre_cli_binary <- function() {
+  runtime_root <- normalizePath(path.expand(Sys.getenv("AHRI_TRE_RUNTIME_ROOT", unset = "")), mustWork = FALSE)
+  file.path(runtime_root, "bin", "ahri-tre")
+}
+
+parse_first_json_object <- function(lines) {
+  if (length(lines) == 0L) {
+    return(NULL)
+  }
+  text <- paste(lines, collapse = "\n")
+  start <- regexpr("\\{", text)
+  if (start[[1]] < 1L) {
+    return(NULL)
+  }
+  json_text <- substr(text, start[[1]], nchar(text))
+  parsed <- try(jsonlite::fromJSON(json_text, simplifyVector = FALSE), silent = TRUE)
+  if (inherits(parsed, "try-error")) {
+    return(NULL)
+  }
+  parsed
+}
+
+tre_cli_json <- function(args) {
+  cli_bin <- tre_cli_binary()
+  runtime_root <- normalizePath(path.expand(Sys.getenv("AHRI_TRE_RUNTIME_ROOT", unset = "")), mustWork = FALSE)
+  runtime_lib <- file.path(runtime_root, "lib")
+  env <- c(paste0("LD_LIBRARY_PATH=", paste(c(runtime_lib, Sys.getenv("LD_LIBRARY_PATH", unset = "")), collapse = ":")))
+
+  output <- suppressWarnings(system2(cli_bin, args = args, stdout = TRUE, stderr = TRUE, env = env))
+  parsed <- parse_first_json_object(output)
+  if (is.null(parsed)) {
+    stop("CLI command did not return parseable JSON: ", paste(output, collapse = "\n"), call. = FALSE)
+  }
+  parsed
+}
+
+tre_cli_call <- function(args) {
+  result <- tre_cli_json(args)
+  if (isTRUE(result$ok)) {
+    return(result)
+  }
+  message_text <- result$error$message %||% result$message %||% "unknown CLI error"
+  stop("CLI call failed: ", message_text, call. = FALSE)
+}
+
+requested_domain_name <- "Basic Science"
+requested_study_name <- "Rfam Database Collection"
+
+load_project_env()
+
+cat("[INFO] Using ahritre package wrappers.\n")
+cat("[INFO] AHRI_TRE_RUNTIME_ROOT=", Sys.getenv("AHRI_TRE_RUNTIME_ROOT", unset = ""), "\n", sep = "")
+
+if (!runtime_preflight()) {
+  cat("[WARN] AHRI TRE runtime files are not installed for the configured artifact root; skipping script execution.\n")
+  invisible(FALSE)
+} else {
+  bootstrap <- tryCatch(
+    {
+      client <- AhriTreClient()
+      list(client = client)
+    },
+    error = function(e) {
+      message_text <- conditionMessage(e)
+      if (is_connectivity_failure(message_text)) {
+        stop(
+          paste0(
+            "TRE runtime/datastore is unavailable. TRE_SERVER=",
+            Sys.getenv("TRE_SERVER", unset = ""),
+            ", TRE_TEST_DBNAME=",
+            Sys.getenv("TRE_TEST_DBNAME", unset = ""),
+            ". Details: ",
+            message_text
+          ),
+          call. = FALSE
+        )
+      }
+      stop(e)
+    }
+  )
+
+  if (is.null(bootstrap)) {
+    invisible(FALSE)
+  } else {
+    client <- bootstrap$client
+    on.exit(close(client), add = TRUE)
+
+    auth_state <- try(auth_status(client, format = "json"), silent = TRUE)
+    if (inherits(auth_state, "try-error")) {
+      cat("[WARN] Could not query auth status; continuing.\n")
+    } else {
+      cat("[INFO] Auth status queried successfully.\n")
+    }
+
+    domains_result <- try(domain_list(client, format = "json"), silent = TRUE)
+    cli_fallback <- is_invalid_request_error(domains_result)
+
+    if (cli_fallback) {
+      cat("[WARN] Wrapper request shape rejected by runtime; falling back to ahri-tre CLI JSON flow.\n")
+      studies_result <- tre_cli_call(c("study", "list", "--format", "json"))
+      studies <- normalize_records(studies_result$data)
+    } else {
+      if (inherits(domains_result, "try-error")) {
+        stop(as.character(domains_result), call. = FALSE)
+      }
+
+      domains <- normalize_records(domains_result$data)
+      cat("\n[INFO] Domains found: ", nrow(domains), "\n", sep = "")
+      if (nrow(domains) > 0) {
+        print(utils::head(domains, 5))
+      }
+
+      domain_names <- first_present_column(domains, c("name", "domain", "domain_name"))
+      if (!any(domain_names == requested_domain_name)) {
+        stop("Domain not found: ", requested_domain_name)
+      }
+
+      studies_result <- study_list(client, format = "json")
+      studies <- normalize_records(studies_result$data)
+    }
+
+    if (nrow(studies) > 0) {
+      study_domain_col <- first_present_column(studies, c("domain", "domain_name", "domain-name"))
+      if (!all(is.na(study_domain_col))) {
+        studies <- studies[is.na(study_domain_col) | study_domain_col == requested_domain_name, , drop = FALSE]
+      }
+    }
+
+    cat("\n[INFO] Studies found in domain filter: ", nrow(studies), "\n", sep = "")
+    if (nrow(studies) > 0) {
+      print(utils::head(studies, 5))
+    }
+
+    study_names <- first_present_column(studies, c("name", "study", "study_name"))
+    if (!any(study_names == requested_study_name)) {
+      stop("Study not found: ", requested_study_name)
+    }
+
+    cat("\n[INFO] Selected study: ", requested_study_name, "\n", sep = "")
+
+    if (cli_fallback) {
+      datasets_result <- tre_cli_call(c(
+        "dataset", "list",
+        "--study", requested_study_name,
+        "--include-versions",
+        "--format", "json"
+      ))
+    } else {
+      datasets_result <- dataset_list(
+        client,
+        study = requested_study_name,
+        include_versions = TRUE,
+        format = "json"
+      )
+    }
+    datasets <- normalize_records(datasets_result$data)
+    cat("[INFO] Dataset entries found for selected study: ", nrow(datasets), "\n", sep = "")
+    if (nrow(datasets) > 0) {
+      print(utils::head(datasets, 5))
+    }
+
+    dataset_names <- unique(first_present_column(datasets, c("name", "dataset", "dataset_name")))
+    dataset_names <- dataset_names[nzchar(dataset_names) & !is.na(dataset_names)]
+
+    if (length(dataset_names) == 0L) {
+      cat("[WARN] No dataset names resolved for study.\n")
+      invisible(FALSE)
+    } else {
+      total_rows_read <- 0L
+
+      for (i in seq_along(dataset_names)) {
+        dataset_name <- dataset_names[[i]]
+        cat("\n[INFO] Reading dataset ", i, "/", length(dataset_names), ": ", dataset_name, "\n", sep = "")
+
+        data_result <- if (cli_fallback) {
+          try(
+            tre_cli_call(c(
+              "dataset", "data",
+              "--study", requested_study_name,
+              "--dataset", dataset_name,
+              "--limit", "10",
+              "--format", "json"
+            )),
+            silent = TRUE
+          )
+        } else {
+          try(
+            dataset_data(
+              client,
+              study = requested_study_name,
+              dataset = dataset_name,
+              limit = 10L,
+              format = "json"
+            ),
+            silent = TRUE
+          )
+        }
+
+        if (inherits(data_result, "try-error")) {
+          cat("[WARN] Dataset read failed: ", as.character(data_result), "\n", sep = "")
+          next
+        }
+
+        rows <- if (cli_fallback) {
+          normalize_records(data_result$data)
+        } else {
+          extract_rows_from_dataset_data(data_result)
+        }
+        total_rows_read <- total_rows_read + nrow(rows)
+        cat("[INFO] Loaded dataset ", dataset_name, ": rows=", nrow(rows), ", cols=", ncol(rows), "\n", sep = "")
+
+        if (ncol(rows) > 0) {
+          print(rows[, seq_len(min(5, ncol(rows))), drop = FALSE])
+        } else {
+          print(rows)
+        }
+      }
+
+      cat("\n[INFO] Total rows read across all datasets: ", total_rows_read, "\n", sep = "")
+    }
+  }
 }
