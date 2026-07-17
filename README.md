@@ -1,5 +1,10 @@
 # ahri-tre-r
 
+> This repository has moved to https://github.com/myezanj/ahriTRErRs.
+>
+> Active development and pull requests now live in the new repository. This
+> copy is retained only as a historical reference.
+
 Seed repository for the future AHRI TRE R binding.
 
 ## Installation
@@ -7,7 +12,7 @@ Seed repository for the future AHRI TRE R binding.
 Install from GitHub:
 
 ```r
-remotes::install_github("AHRIORG/ahri-tre-r")
+remotes::install_github("myezanj/ahriTRErRs")
 ```
 
 This package is intentionally small. It demonstrates how an R package should
