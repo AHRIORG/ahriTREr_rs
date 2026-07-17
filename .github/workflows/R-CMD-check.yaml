@@ -51,20 +51,15 @@ jobs:
       - name: Provision runtime database user
         run: |
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
-          DO $$
-          BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tre_user') THEN
-              CREATE ROLE tre_user LOGIN PASSWORD 'tre_password';
-            END IF;
-          END
-          $$;
-          DO $$
-          BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'tre') THEN
-              CREATE DATABASE tre OWNER tre_user;
-            END IF;
-          END
-          $$;
+          SELECT 'CREATE ROLE tre_user LOGIN PASSWORD ''tre_password'''
+          WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'tre_user')
+          \gexec
+          SQL
+
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT 'CREATE DATABASE tre OWNER tre_user'
+          WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'tre')
+          \gexec
           SQL
 
       - name: Install AHRI TRE runtime artifact
